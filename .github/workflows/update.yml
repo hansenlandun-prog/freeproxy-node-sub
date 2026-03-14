@@ -1,4 +1,4 @@
-name: Update Proxy Subscription
+name: Auto Update Proxy
 
 on:
   schedule:
@@ -8,8 +8,11 @@ on:
 permissions:
   contents: write
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
-  build:
+  update:
     runs-on: ubuntu-latest
 
     steps:
@@ -19,18 +22,18 @@ jobs:
       - name: Install tools
         run: |
           sudo apt update
-          sudo apt install curl -y
+          sudo apt install curl jq -y
 
-      - name: Download nodes
+      - name: Fetch node sources
         run: |
           rm -f merged.txt
           touch merged.txt
           while read line
           do
             curl -L $line >> merged.txt
-          done < nodes.txt
+          done < sources.txt
 
-      - name: Remove duplicate
+      - name: Remove duplicates
         run: |
           sort -u merged.txt -o merged.txt
 
@@ -40,10 +43,10 @@ jobs:
           cp merged.txt shadowrocket.txt
           cp merged.txt clash.yaml
 
-      - name: Commit
+      - name: Commit update
         run: |
           git config --global user.name github-actions
           git config --global user.email actions@github.com
           git add .
-          git commit -m "update subscription" || echo "no update"
+          git commit -m "auto update nodes" || echo "no update"
           git push
