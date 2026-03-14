@@ -1,4 +1,4 @@
-name: Auto Fast Proxy Update
+name: Auto Proxy Platform with Rules
 
 on:
   schedule:
@@ -22,9 +22,9 @@ jobs:
     - name: Install tools
       run: |
         sudo apt update
-        sudo apt install curl -y
+        sudo apt install curl jq -y
 
-    - name: Download nodes
+    - name: Fetch node sources
       run: |
         rm -f merged.txt
         touch merged.txt
@@ -33,25 +33,46 @@ jobs:
           curl -L $line >> merged.txt
         done < sources.txt
 
+    - name: Add private nodes
+      run: |
+        cat private_nodes.txt >> merged.txt || true
+
     - name: Remove duplicates
       run: |
         sort -u merged.txt -o merged.txt
 
-    - name: Prefer Asia nodes
+    - name: Split regions
       run: |
-        grep -Ei "HK|Hong Kong|JP|Japan|SG|Singapore" merged.txt > asia.txt || true
-        head -n 100 asia.txt > filtered.txt
+        grep -Ei "HK|Hong Kong" merged.txt > hk.txt || true
+        grep -Ei "JP|Japan" merged.txt > jp.txt || true
+        grep -Ei "SG|Singapore" merged.txt > sg.txt || true
 
-    - name: Generate subscriptions
+    - name: Generate optimized subscriptions
       run: |
-        cp filtered.txt base64.txt
-        cp filtered.txt shadowrocket.txt
-        cp filtered.txt clash.yaml
+        cp merged.txt all.txt
+        cp merged.txt base64.txt
+        cp merged.txt shadowrocket.txt
+        cp merged.txt clash.yaml
+        # Add rule-based optimization to clash.yaml
+        echo "proxy-groups:" >> clash.yaml
+        echo "  - name: \"Proxy\"" >> clash.yaml
+        echo "    type: select" >> clash.yaml
+        echo "    proxies:" >> clash.yaml
+        echo "      - \"HK-VPS\"" >> clash.yaml
+        echo "      - \"SG-VPS\"" >> clash.yaml
+        echo "      - \"DIRECT\"" >> clash.yaml
+        echo "rules:" >> clash.yaml
+        echo "  - GEOIP,CN,DIRECT" >> clash.yaml
+        echo "  - DOMAIN-SUFFIX,google.com,Proxy" >> clash.yaml
+        echo "  - DOMAIN-SUFFIX,facebook.com,Proxy" >> clash.yaml
+        echo "  - DOMAIN-SUFFIX,twitter.com,Proxy" >> clash.yaml
+        echo "  - DOMAIN-SUFFIX,youtube.com,Proxy" >> clash.yaml
+        echo "  - MATCH,Proxy" >> clash.yaml
 
     - name: Commit update
       run: |
         git config --global user.name github-actions
         git config --global user.email actions@github.com
         git add .
-        git commit -m "update fast nodes" || echo "no changes"
+        git commit -m "update proxy platform with rule-based optimizations" || echo "no update"
         git push
