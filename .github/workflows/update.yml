@@ -1,4 +1,4 @@
-name: Update Nodes
+name: Update Proxy Subscription
 
 on:
   schedule:
@@ -9,34 +9,41 @@ permissions:
   contents: write
 
 jobs:
-  update:
+  build:
     runs-on: ubuntu-latest
-    # 核心修改：根据报错建议，强制使用 Node 24 以消除弃用警告
-    env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
     steps:
-    - name: Checkout
-      uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '24' # 直接步入 2026 年的标准版本
+      - name: Install tools
+        run: |
+          sudo apt update
+          sudo apt install curl -y
 
-    - name: Fetch nodes
-      run: |
-        rm -f all_nodes.txt
-        touch all_nodes.txt
-        while read -r line
-        do
-          curl -Ls "$line" >> all_nodes.txt
-        done < nodes.txt
+      - name: Download nodes
+        run: |
+          rm -f merged.txt
+          touch merged.txt
+          while read line
+          do
+            curl -L $line >> merged.txt
+          done < nodes.txt
 
-    - name: Commit and Push
-      run: |
-        git config --global user.name "github-actions"
-        git config --global user.email "actions@github.com"
-        git add .
-        git commit -m "update nodes" || echo "no changes"
-        git push
+      - name: Remove duplicate
+        run: |
+          sort -u merged.txt -o merged.txt
+
+      - name: Generate subscriptions
+        run: |
+          cp merged.txt base64.txt
+          cp merged.txt shadowrocket.txt
+          cp merged.txt clash.yaml
+
+      - name: Commit
+        run: |
+          git config --global user.name github-actions
+          git config --global user.email actions@github.com
+          git add .
+          git commit -m "update subscription" || echo "no update"
+          git push
