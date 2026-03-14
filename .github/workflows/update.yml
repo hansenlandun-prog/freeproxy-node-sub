@@ -1,0 +1,31 @@
+name: Update Nodes
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    - name: Fetch nodes
+      run: |
+        rm -f all_nodes.txt
+        touch all_nodes.txt
+        while read line
+        do
+          curl -L $line >> all_nodes.txt
+        done < nodes.txt
+
+    - name: Commit update
+      run: |
+        git config --global user.name "github-actions"
+        git config --global user.email "actions@github.com"
+        git add .
+        git commit -m "update nodes"
+        git push
