@@ -1,4 +1,4 @@
-name: Auto Proxy Platform with Rules
+name: Proxy Platform Pro
 
 on:
   schedule:
@@ -16,15 +16,16 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+
     - name: Checkout
       uses: actions/checkout@v4
 
     - name: Install tools
       run: |
         sudo apt update
-        sudo apt install curl jq -y
+        sudo apt install curl -y
 
-    - name: Fetch node sources
+    - name: Download nodes
       run: |
         rm -f merged.txt
         touch merged.txt
@@ -47,32 +48,16 @@ jobs:
         grep -Ei "JP|Japan" merged.txt > jp.txt || true
         grep -Ei "SG|Singapore" merged.txt > sg.txt || true
 
-    - name: Generate optimized subscriptions
+    - name: Generate subscriptions
       run: |
-        cp merged.txt all.txt
         cp merged.txt base64.txt
         cp merged.txt shadowrocket.txt
-        cp merged.txt clash.yaml
-        # Add rule-based optimization to clash.yaml
-        echo "proxy-groups:" >> clash.yaml
-        echo "  - name: \"Proxy\"" >> clash.yaml
-        echo "    type: select" >> clash.yaml
-        echo "    proxies:" >> clash.yaml
-        echo "      - \"HK-VPS\"" >> clash.yaml
-        echo "      - \"SG-VPS\"" >> clash.yaml
-        echo "      - \"DIRECT\"" >> clash.yaml
-        echo "rules:" >> clash.yaml
-        echo "  - GEOIP,CN,DIRECT" >> clash.yaml
-        echo "  - DOMAIN-SUFFIX,google.com,Proxy" >> clash.yaml
-        echo "  - DOMAIN-SUFFIX,facebook.com,Proxy" >> clash.yaml
-        echo "  - DOMAIN-SUFFIX,twitter.com,Proxy" >> clash.yaml
-        echo "  - DOMAIN-SUFFIX,youtube.com,Proxy" >> clash.yaml
-        echo "  - MATCH,Proxy" >> clash.yaml
+        cp merged.txt fast.txt
 
-    - name: Commit update
+    - name: Commit
       run: |
         git config --global user.name github-actions
         git config --global user.email actions@github.com
         git add .
-        git commit -m "update proxy platform with rule-based optimizations" || echo "no update"
+        git commit -m "update nodes" || echo "no update"
         git push
