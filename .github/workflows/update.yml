@@ -1,4 +1,4 @@
-name: Proxy Platform Pro
+name: Auto Proxy Platform
 
 on:
   schedule:
@@ -32,6 +32,7 @@ jobs:
         while read line
         do
           curl -L $line >> merged.txt
+          echo "" >> merged.txt
         done < sources.txt
 
     - name: Add private nodes
@@ -42,19 +43,17 @@ jobs:
       run: |
         sort -u merged.txt -o merged.txt
 
-    - name: Split regions
+    - name: Remove invalid lines
       run: |
-        grep -Ei "HK|Hong Kong" merged.txt > hk.txt || true
-        grep -Ei "JP|Japan" merged.txt > jp.txt || true
-        grep -Ei "SG|Singapore" merged.txt > sg.txt || true
+        grep -E "vmess://|vless://|trojan://|ss://" merged.txt > nodes.txt
+        mv nodes.txt merged.txt
 
     - name: Generate subscriptions
       run: |
         cp merged.txt base64.txt
         cp merged.txt shadowrocket.txt
-        cp merged.txt fast.txt
 
-    - name: Commit
+    - name: Commit files
       run: |
         git config --global user.name github-actions
         git config --global user.email actions@github.com
