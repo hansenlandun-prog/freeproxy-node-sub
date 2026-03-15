@@ -31,7 +31,8 @@ jobs:
         touch merged.txt
         while read line
         do
-          curl -L $line >> merged.txt
+          echo "Downloading $line"
+          curl -L --max-time 20 $line >> merged.txt
           echo "" >> merged.txt
         done < sources.txt
 
@@ -39,24 +40,30 @@ jobs:
       run: |
         cat private_nodes.txt >> merged.txt || true
 
-    - name: Remove duplicates
-      run: |
-        sort -u merged.txt -o merged.txt
-
-    - name: Remove invalid lines
+    - name: Filter valid nodes
       run: |
         grep -E "vmess://|vless://|trojan://|ss://" merged.txt > nodes.txt
-        mv nodes.txt merged.txt
+
+    - name: Remove duplicates
+      run: |
+        sort -u nodes.txt -o nodes.txt
+
+    - name: Check nodes
+      run: |
+        if [ ! -s nodes.txt ]; then
+          echo "No valid nodes found"
+          exit 1
+        fi
 
     - name: Generate subscriptions
       run: |
-        cp merged.txt base64.txt
-        cp merged.txt shadowrocket.txt
+        cp nodes.txt base64.txt
+        cp nodes.txt shadowrocket.txt
 
     - name: Commit files
       run: |
         git config --global user.name github-actions
         git config --global user.email actions@github.com
         git add .
-        git commit -m "update nodes" || echo "no update"
+        git commit -m "update nodes" || echo "no changes"
         git push
